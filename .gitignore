@@ -1,0 +1,12 @@
+# project specific
+solitaire
+solitaire_save.txt
+solitaire_stats.txt
+
+# backup files
+*.bak
+
+# emacs
+*~
+\#*\#
+.\#*
