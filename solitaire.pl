@@ -36,8 +36,8 @@ card( [Suit, Rank] ) :-
     Suit in 0..2,
     Rank in 0..9.
 
-isdragon([_, 0]).
-notdragon([_, Rank]):-
+isfamily([_, 0]).
+notfamily([_, Rank]):-
     Rank in 1..9.
 
 char_of_suit(Suit, Char):-
@@ -46,7 +46,7 @@ char_of_suit(Suit, Char):-
 write_card(Card) :-
     [Suit, Rank]= Card,
     char_of_suit(Suit, SChar),
-    (  isdragon(Card)
+    (  isfamily(Card)
     -> RChar= SChar
     ;  term_string(Rank, RChar)
     ),
@@ -57,7 +57,7 @@ write_card(Card) :-
 
 write_card_bw(Card) :-
     [Suit, Rank]= Card,
-    ( isdragon(Card) ->
+    ( isfamily(Card) ->
       write_suit(Suit)
     ;
     write(Rank)
@@ -85,7 +85,7 @@ top_left([C]):- card(C).
 top_right([]).
 top_right(L):-
     maplist(card, L),
-    maplist(not_dragon, L).
+    maplist(not_family, L).
 
 column(Column):-
     maplist(card, Column).
@@ -220,7 +220,7 @@ deal(Board):-
 
 isstack([_]).
 isstack([Card1|[Card2|Tail]]):-
-    notdragon(Card1),
+    notfamily(Card1),
     [S1,R1]= Card1,
     [S2,R2]= Card2,
     R2 #= R1 + 1,
@@ -277,7 +277,7 @@ place_stack(Board, Stack, [H,I], Board_new):-
     (  H #= 2
     -> (  Col = [Card2|_]
        -> last(Stack, Card),
-          notdragon(Card2),
+          notfamily(Card2),
           [S1,R1]= Card,
           [S2,R2]= Card2,
           R2 #= R1 + 1,
@@ -291,7 +291,7 @@ place_stack(Board, Stack, [H,I], Board_new):-
        ; % H #= 1
          I #= S1,
          [Card] = Stack,
-         notdragon(Card),
+         notfamily(Card),
          [S1,R1]= Card,
          (  Col = [Card2|_]
          -> [S1,R1]= Card,
@@ -340,8 +340,8 @@ remove_visible(Card, [Col|Cols], [Col_new|Cols_new]):-
     ),
     remove_visible(Card, Cols, Cols_new).
 
-kill_this_dragon(Board, Card, Board_new):-
-    isdragon(Card),
+kill_this_family(Board, Card, Board_new):-
+    isfamily(Card),
     [Top_lefts, Top_rights, Columns]= Board,
     count_visible(Card, Top_lefts, Nl),
     Nl > 0,
@@ -353,25 +353,25 @@ kill_this_dragon(Board, Card, Board_new):-
     place_first_topleft(Board2, Card, Board_new).
 
 % Kills one, fails if kills zero.
-kill_one_dragon_sub(Board, [Col|L], Board_new):-
-    (  (  [Card]= Col, kill_this_dragon(Board, Card, Board_new)  )
-    ;  kill_one_dragon_sub(Board, L, Board_new)
+kill_one_family_sub(Board, [Col|L], Board_new):-
+    (  (  [Card]= Col, kill_this_family(Board, Card, Board_new)  )
+    ;  kill_one_family_sub(Board, L, Board_new)
     ).
 
-kill_one_dragon(Board, Board_new):-
+kill_one_family(Board, Board_new):-
     [Top_lefts, _, _]= Board,
-    kill_one_dragon_sub(Board, Top_lefts, Board_new).
+    kill_one_family_sub(Board, Top_lefts, Board_new).
 
 % Kills all, fails if kills zero.
-kill_dragons(Board, Board_new):-
-    (  kill_one_dragon(Board, Board2) % This one needs to succed
-    -> (  kill_dragons(Board2, Board_new) % If this one fails, it's ok.
+kill_families(Board, Board_new):-
+    (  kill_one_family(Board, Board2) % This one needs to succed
+    -> (  kill_families(Board2, Board_new) % If this one fails, it's ok.
        ;  Board_new= Board2
        )
     ).
 
-kill_zero_or_more_dragons(Board3, Board4):-
-    (  kill_dragons(Board3, Board4)
+kill_zero_or_more_families(Board3, Board4):-
+    (  kill_families(Board3, Board4)
     ;  Board4= Board3
     ).
     
@@ -382,7 +382,7 @@ place_first_topleft(Board, Card, Board_new):-
     [Top_lefts_new, Top_rights, Columns]= Board_new.
 
 do_moves(Board3, [], Board4):-
-    kill_zero_or_more_dragons(Board3, Board4).
+    kill_zero_or_more_families(Board3, Board4).
 do_moves(Board, [Move|Moves], Board_new):-
     fd_length(Moves, _),
     % Move = [[I, J], I_new]
@@ -391,12 +391,12 @@ do_moves(Board, [Move|Moves], Board_new):-
     valid_grab_stack(Board, HIJ, Stack),
     remove_stack(Board, HIJ, Board2),
     place_stack(Board2, Stack, HI_new, Board3),
-    kill_zero_or_more_dragons(Board3, Board4),
+    kill_zero_or_more_families(Board3, Board4),
     do_moves(Board4, Moves, Board_new).
 
 
 automoves(Board0, Moves, Board_new):-
-    kill_zero_or_more_dragons(Board0, Board),
+    kill_zero_or_more_families(Board0, Board),
     (  ( H in 0..2, H #\= 1, 
          %M= [[H,I,0],[1,I_new]],
          M= [[H,I,0],[1,_]],
@@ -436,7 +436,7 @@ free_spaces(Board, N):-
     N is N1+N2.
 
 solver_do_moves(Board3, [], Board4):-
-    kill_zero_or_more_dragons(Board3, Board4).
+    kill_zero_or_more_families(Board3, Board4).
 solver_do_moves(Board, [Moves|Movess], Board_new):-
     fd_length(Movess, _),
     Moves= [Move|Moves_auto],
@@ -636,15 +636,15 @@ column 5.
   game that was won are
   tracked in the stats."  ]).
 
-%% To print the moves AND print dragon killings, we need to duplicate what
+%% To print the moves AND print family killings, we need to duplicate what
 %%  do_moves does. There are two passes: convert moves to "pseudo moves",
-%%  where "[]" means kill dragons, then write those pseudo moves.
+%%  where "[]" means kill families, then write those pseudo moves.
 
-% Includes dragon killing (not technically a move)
+% Includes family killing (not technically a move)
 pseudo_moves(Board, Moves, Moves_pseudo):-
-    (  kill_one_dragon(Board, Board_dragon)
+    (  kill_one_family(Board, Board_family)
     -> Moves_pseudo= [[]|Rest_pseudo],
-       pseudo_moves(Board_dragon, Moves, Rest_pseudo)
+       pseudo_moves(Board_family, Moves, Rest_pseudo)
     ;  (  Moves = [Move|Rest]
        -> [HIJ, HI_new]= Move,
           valid_grab_stack(Board, HIJ, Stack),
@@ -652,7 +652,7 @@ pseudo_moves(Board, Moves, Moves_pseudo):-
           place_stack(Board2, Stack, HI_new, Board3),
           [Move|Rest_pseudo]= Moves_pseudo,
           pseudo_moves(Board3, Rest, Rest_pseudo)
-       ;  % no moves left, no dragon to kill
+       ;  % no moves left, no family to kill
           Moves_pseudo= []
        )
     ).
@@ -665,7 +665,7 @@ write_pseudo_moves(Board, [Move|Moves]):-
        remove_stack(Board, HIJ, Board2),
        place_stack(Board2, Stack, HI_new, Board3)
     ;  (Move = [] ; wtf), % sanity check
-       kill_one_dragon(Board, Board3),
+       kill_one_family(Board, Board3),
        (Board \= Board3 ; wtf) % sanity check
     ),
     (  Moves = [_|_]  % Only print if this isn't the last move
